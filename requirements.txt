@@ -33,7 +33,6 @@ itsdangerous==2.2.0
 Jinja2==3.1.4
 MarkupSafe==2.1.5
 mysql-connector==2.2.9
-mysql-connector-python==9.3.0
 numpy==2.1.2
 oauthlib==3.2.2
 opencv-python==4.10.0.84
