@@ -6,6 +6,7 @@ import os
 from config import *
 import google.generativeai as genai
 
+
 app = Flask(__name__)
 CORS(app)
 
@@ -15,7 +16,7 @@ genai.configure(api_key=API_KEY)
 # ROTA PRINCIPAL DE TESTE
 @app.route('/')
 def index():
-    
+
     return 'API ON', 200
 
 # CADASTRAR USUÁRIO
@@ -169,7 +170,6 @@ def fashcard():
 #REVISÃO 6 (quiz)
 @app.route('/quiz', methods=['GET'])
 def quiz():
-
     # Recupera o corpo da requisição POST que deve conter o input 
     data = request.get_json()
         
