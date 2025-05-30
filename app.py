@@ -15,6 +15,7 @@ genai.configure(api_key=API_KEY)
 # ROTA PRINCIPAL DE TESTE
 @app.route('/')
 def index():
+    
     return 'API ON', 200
 
 # CADASTRAR USUÁRIO
