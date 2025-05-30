@@ -5,21 +5,12 @@ import os
 from config import *
 import google.generativeai as genai
 from dotenv import load_dotenv
-from flask_sqlalchemy import SQLAlchemy
+# import mysql.connector
 load_dotenv()
 
 
 app = Flask(__name__)
 CORS(app)
-
-# Configuração do banco de dados
-app.config['SQLALCHEMY_DATABASE_URI'] = (
-    f"postgresql+psycopg2://{os.getenv('DB_USER')}:{os.getenv('DB_PASSWORD')}"
-    f"@{os.getenv('DB_HOST')}:{os.getenv('DB_PORT')}/{os.getenv('DB_NAME')}"
-)
-app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False
-
-db = SQLAlchemy(app)
 
 #api key do google
 API_KEY = os.getenv("GOOGLE_API_KEY")
@@ -31,6 +22,24 @@ genai.configure(api_key=API_KEY)
 def index():
 
     return 'API ON', 200
+
+# LOGIN DO USUÁRIO
+@app.route('/usuarios', methods=['POST'])
+def lo_usuario():
+    data = request.get_json()
+    nome = data.get('nome')
+    email = data.get('email')
+    senha = data.get('senha')
+
+    if not nome or not email or not senha:
+        return jsonify({'error': 'Todos os campos são obrigatórios.'}), 400
+
+    try:
+        cursor.execute('INSERT INTO usuarios (nome, email, senha) VALUES (%s, %s, %s)', (nome, email, senha))
+        conn.commit()
+        return jsonify({'message': 'Usuário cadastrado com sucesso.'}), 201
+    except mysql.connector.IntegrityError:
+        return jsonify({'error': 'Email já cadastrado.'}), 400
 
 # CADASTRAR USUÁRIO
 @app.route('/usuarios', methods=['POST'])
@@ -202,4 +211,5 @@ def quiz():
         return jsonify({"erro": str(e)}), 500
 
 if __name__ == '__main__':
-    app.run(debug=True, host='0.0.0.0', port=5000)
+    app.run(debug=True)
+    #para hostear localmente: , host='0.0.0.0', port=5000
