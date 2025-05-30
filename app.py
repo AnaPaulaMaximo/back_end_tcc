@@ -2,10 +2,14 @@ from flask import Flask, request, jsonify
 from flask_cors import CORS
 from google import genai
 import os 
-from config import *
+# from config import *
 import google.generativeai as genai
 from dotenv import load_dotenv
-# import mysql.connector
+from flask_sqlalchemy import SQLAlchemy
+from app import app, db
+from model import Aluno
+from sqlalchemy.exc import IntegrityError
+from werkzeug.security import generate_password_hash
 load_dotenv()
 
 
@@ -16,6 +20,10 @@ CORS(app)
 API_KEY = os.getenv("GOOGLE_API_KEY")
 genai.configure(api_key=API_KEY)
 
+SQLALCHEMY_DATABASE_URI = os.getenv('DATABASE_URL')
+SQLALCHEMY_TRACK_MODIFICATIONS = False
+
+db = SQLAlchemy()
 
 # ROTA PRINCIPAL DE TESTE
 @app.route('/')
@@ -23,25 +31,9 @@ def index():
 
     return 'API ON', 200
 
-# LOGIN DO USUÁRIO
-@app.route('/usuarios', methods=['POST'])
-def lo_usuario():
-    data = request.get_json()
-    nome = data.get('nome')
-    email = data.get('email')
-    senha = data.get('senha')
 
-    if not nome or not email or not senha:
-        return jsonify({'error': 'Todos os campos são obrigatórios.'}), 400
 
-    try:
-        cursor.execute('INSERT INTO usuarios (nome, email, senha) VALUES (%s, %s, %s)', (nome, email, senha))
-        conn.commit()
-        return jsonify({'message': 'Usuário cadastrado com sucesso.'}), 201
-    except mysql.connector.IntegrityError:
-        return jsonify({'error': 'Email já cadastrado.'}), 400
-
-# CADASTRAR USUÁRIO
+# CADASTAR ALUNO
 @app.route('/usuarios', methods=['POST'])
 def cadastrar_usuario():
     data = request.get_json()
@@ -49,18 +41,23 @@ def cadastrar_usuario():
     email = data.get('email')
     senha = data.get('senha')
 
-    if not nome or not email or not senha:
-        return jsonify({'error': 'Todos os campos são obrigatórios.'}), 400
+    if not email or not senha:
+        return jsonify({'error': 'Email e senha são obrigatórios.'}), 400
+
+    senha_hash = generate_password_hash(senha)
+    aluno = Aluno(nome=nome, email=email, senha_hash=senha_hash)
 
     try:
-        cursor.execute('INSERT INTO usuarios (nome, email, senha) VALUES (%s, %s, %s)', (nome, email, senha))
-        conn.commit()
+        db.session.add(aluno)
+        db.session.commit()
         return jsonify({'message': 'Usuário cadastrado com sucesso.'}), 201
-    except mysql.connector.IntegrityError:
+    except IntegrityError:
+        db.session.rollback()
         return jsonify({'error': 'Email já cadastrado.'}), 400
     
+    
 
-# EDITAR USUÁRIO
+# EDITAR ALUNO
 @app.route('/usuarios/<int:id>', methods=['PUT'])
 def editar_usuario(id):
     data = request.get_json()
@@ -68,35 +65,44 @@ def editar_usuario(id):
     email = data.get('email')
     senha = data.get('senha')
 
-    if not nome or not email or not senha:
-        return jsonify({'error': 'Todos os campos são obrigatórios.'}), 400
+    if not email or not senha:
+        return jsonify({'error': 'Email e senha são obrigatórios.'}), 400
 
-    cursor.execute('UPDATE usuarios SET nome=%s, email=%s, senha=%s WHERE id=%s', (nome, email, senha, id))
-    conn.commit()
-
-    if cursor.rowcount == 0: #mostra quantas linhas foram afetadas pelo update
+    aluno = Aluno.query.get(id)
+    if not aluno:
         return jsonify({'error': 'Usuário não encontrado.'}), 404
+
+    aluno.nome = nome
+    aluno.email = email
+    aluno.senha_hash = generate_password_hash(senha)
+    db.session.commit()
 
     return jsonify({'message': 'Usuário atualizado com sucesso.'})
 
-# EXCLUIR USUÁRIO
+# EXCLUIR ALUNO
 @app.route('/usuarios/<int:id>', methods=['DELETE'])
 def excluir_usuario(id):
-    cursor.execute('DELETE FROM usuarios WHERE id=%s', (id,))
-    conn.commit()
-
-    if cursor.rowcount == 0:
+    aluno = Aluno.query.get(id)
+    if not aluno:
         return jsonify({'error': 'Usuário não encontrado.'}), 404
 
+    db.session.delete(aluno)
+    db.session.commit()
     return jsonify({'message': 'Usuário excluído com sucesso.'})
 
-# Listar todos os usuários
+# LISTAR ALUNOS
 @app.route('/usuarios', methods=['GET'])
 def listar_usuarios():
-    cursor.execute('SELECT id, nome, email FROM usuarios')
-    usuarios = cursor.fetchall()
-    return jsonify(usuarios)
-
+    alunos = Aluno.query.all()
+    return jsonify([
+        {
+            'id_aluno': aluno.id_aluno,
+            'nome': aluno.nome,
+            'email': aluno.email,
+            'url_foto': aluno.url_foto
+        }
+        for aluno in alunos
+    ])
 
 #REVISÃO 2 (mapa conceitual)
 @app.route('/mapa_conceitual', methods=['GET'])
