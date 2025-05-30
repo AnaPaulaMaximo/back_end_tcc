@@ -1,19 +1,30 @@
 from flask import Flask, request, jsonify
 from flask_cors import CORS
-# import mysql.connector
 from google import genai
 import os 
 from config import *
 import google.generativeai as genai
 from dotenv import load_dotenv
+from flask_sqlalchemy import SQLAlchemy
 load_dotenv()
 
 
 app = Flask(__name__)
 CORS(app)
 
+# Configuração do banco de dados
+app.config['SQLALCHEMY_DATABASE_URI'] = (
+    f"postgresql+psycopg2://{os.getenv('DB_USER')}:{os.getenv('DB_PASSWORD')}"
+    f"@{os.getenv('DB_HOST')}:{os.getenv('DB_PORT')}/{os.getenv('DB_NAME')}"
+)
+app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False
+
+db = SQLAlchemy(app)
+
+#api key do google
 API_KEY = os.getenv("GOOGLE_API_KEY")
 genai.configure(api_key=API_KEY)
+
 
 # ROTA PRINCIPAL DE TESTE
 @app.route('/')
