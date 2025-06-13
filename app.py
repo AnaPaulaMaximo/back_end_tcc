@@ -1,29 +1,25 @@
 from flask import Flask, request, jsonify
 from flask_cors import CORS
 from google import genai
-import os 
-# from config import *
+import os
 import google.generativeai as genai
 from dotenv import load_dotenv
-from flask_sqlalchemy import SQLAlchemy
-from app import app, db
-from model import Aluno
+from model import Aluno, db  # <--- IMPORTA db DO model.py
 from sqlalchemy.exc import IntegrityError
 from werkzeug.security import generate_password_hash
-load_dotenv()
+from sqlalchemy import text
 
+load_dotenv()
 
 app = Flask(__name__)
 CORS(app)
 
-#api key do google
-API_KEY = os.getenv("GOOGLE_API_KEY")
-genai.configure(api_key=API_KEY)
+app.config['SQLALCHEMY_DATABASE_URI'] = os.getenv('DATABASE_URL')
+app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False
 
-SQLALCHEMY_DATABASE_URI = os.getenv('DATABASE_URL')
-SQLALCHEMY_TRACK_MODIFICATIONS = False
+db.init_app(app)
 
-db = SQLAlchemy()
+
 
 # ROTA PRINCIPAL DE TESTE
 @app.route('/')
@@ -34,7 +30,7 @@ def index():
 
 
 # CADASTAR ALUNO
-@app.route('/usuarios', methods=['POST'])
+@app.route('/cadastrar_usuarios', methods=['POST'])
 def cadastrar_usuario():
     data = request.get_json()
     nome = data.get('nome')
@@ -58,7 +54,7 @@ def cadastrar_usuario():
     
 
 # EDITAR ALUNO
-@app.route('/usuarios/<int:id>', methods=['PUT'])
+@app.route('/editar_usuarios/<int:id>', methods=['PUT'])
 def editar_usuario(id):
     data = request.get_json()
     nome = data.get('nome')
@@ -80,7 +76,7 @@ def editar_usuario(id):
     return jsonify({'message': 'Usuário atualizado com sucesso.'})
 
 # EXCLUIR ALUNO
-@app.route('/usuarios/<int:id>', methods=['DELETE'])
+@app.route('/excluir_usuarios/<int:id>', methods=['DELETE'])
 def excluir_usuario(id):
     aluno = Aluno.query.get(id)
     if not aluno:
@@ -94,6 +90,8 @@ def excluir_usuario(id):
 @app.route('/usuarios', methods=['GET'])
 def listar_usuarios():
     alunos = Aluno.query.all()
+    if not alunos:
+        return jsonify({'message': 'Nenhum usuário encontrado.'}), 404
     return jsonify([
         {
             'id_aluno': aluno.id_aluno,
@@ -217,5 +215,12 @@ def quiz():
         return jsonify({"erro": str(e)}), 500
 
 if __name__ == '__main__':
+    with app.app_context():
+        try:
+            db.session.execute(text('SELECT 1'))
+            print('Banco conectado!')
+        except Exception as e:
+            print(f'status: Erro na conexão - {str(e)}')
+
     app.run(debug=True)
     #para hostear localmente: , host='0.0.0.0', port=5000

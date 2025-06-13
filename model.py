@@ -1,14 +1,13 @@
 from flask_sqlalchemy import SQLAlchemy
 from datetime import date
 
-# instância do SQLAlchemy (deve estar conectada ao app Flask em outro arquivo)
 db = SQLAlchemy()
 
 class Aluno(db.Model):
     __tablename__ = 'aluno'
 
     id_aluno = db.Column(db.Integer, primary_key=True)
-    nome = db.Column(db.String(100), nullable=True)
+    nome = db.Column(db.String(100), nullable=False)
     email = db.Column(db.String(100), unique=True, nullable=False)
     senha_hash = db.Column(db.String(255), nullable=False)
     url_foto = db.Column(db.String(255))
