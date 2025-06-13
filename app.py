@@ -215,6 +215,7 @@ def quiz():
         return jsonify({"erro": str(e)}), 500
 
 if __name__ == '__main__':
+<<<<<<< HEAD
     with app.app_context():
         try:
             db.session.execute(text('SELECT 1'))
@@ -224,3 +225,6 @@ if __name__ == '__main__':
 
     app.run(debug=True)
     #para hostear localmente: , host='0.0.0.0', port=5000
+=======
+    app.run(debug=True)
+>>>>>>> parent of 06a76c4 (Co-authored-by: Thimo08 <Thimo08@users.noreply.github.com>)
