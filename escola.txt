@@ -1,13 +1,10 @@
-import pymysql
+import mysql.connector
 from flask import Flask, request, jsonify
 from flask_cors import CORS
-from config import conn, cursor
+from config import conn, cursor  
 import google.generativeai as genai
 import os
 from dotenv import load_dotenv
-from pymysql.err import IntegrityError
-
-load_dotenv()
 
 app = Flask(__name__)
 CORS(app)
@@ -15,10 +12,15 @@ CORS(app)
 API_KEY = os.getenv("GOOGLE_API_KEY")
 genai.configure(api_key=API_KEY)
 
+
+
+# ROTA PRINCIPAL DE TESTE
 @app.route('/')
 def index():
+
     return 'API ON', 200
 
+#ROTA LOGIN
 @app.route('/login', methods=['POST'])
 def login():
     data = request.get_json()
@@ -28,14 +30,16 @@ def login():
     if not email or not senha:
         return jsonify({'error': 'Email e senha são obrigatórios.'}), 400
 
-    cursor.execute('SELECT id_aluno, nome, email FROM usuarios WHERE email = %s AND senha = %s', (email, senha))
+    cursor.execute('SELECT id, nome, email FROM usuarios WHERE email = %s AND senha = %s', (email, senha))
     usuario = cursor.fetchone()
 
     if usuario:
-        return jsonify({'message': 'Login realizado com sucesso!', 'user': usuario}), 200
+        # Em um sistema real, você geraria um token JWT aqui
+        return jsonify({'message': 'Login realizado com sucesso!', 'user': {'id': usuario[0], 'nome': usuario[1], 'email': usuario[2]}}), 200
     else:
         return jsonify({'error': 'Email ou senha inválidos.'}), 401
 
+# CADASTRAR USUÁRIO
 @app.route('/cadastrar_usuario', methods=['POST'])
 def cadastrar_usuario():
     data = request.get_json()
@@ -50,11 +54,13 @@ def cadastrar_usuario():
         cursor.execute('INSERT INTO usuarios (nome, email, senha) VALUES (%s, %s, %s)', (nome, email, senha))
         conn.commit()
         return jsonify({'message': 'Usuário cadastrado com sucesso.'}), 201
-    except IntegrityError:
+    except mysql.connector.IntegrityError:
         return jsonify({'error': 'Email já cadastrado.'}), 400
 
-@app.route('/editar_usuario/<int:id_aluno>', methods=['PUT'])
-def editar_usuario(id_aluno):
+
+# EDITAR USUÁRIO
+@app.route('/editar_usuario/<int:id>', methods=['PUT'])
+def editar_usuario(id):
     data = request.get_json()
     nome = data.get('nome')
     email = data.get('email')
@@ -63,17 +69,18 @@ def editar_usuario(id_aluno):
     if not nome or not email or not senha:
         return jsonify({'error': 'Todos os campos são obrigatórios.'}), 400
 
-    cursor.execute('UPDATE usuarios SET nome=%s, email=%s, senha=%s WHERE id_aluno=%s', (nome, email, senha, id_aluno))
+    cursor.execute('UPDATE usuarios SET nome=%s, email=%s, senha=%s WHERE id=%s', (nome, email, senha, id))
     conn.commit()
 
-    if cursor.rowcount == 0:
+    if cursor.rowcount == 0: #mostra quantas linhas foram afetadas pelo update
         return jsonify({'error': 'Usuário não encontrado.'}), 404
 
     return jsonify({'message': 'Usuário atualizado com sucesso.'})
 
-@app.route('/excluir_usuario/<int:id_aluno>', methods=['DELETE'])
-def excluir_usuario(id_aluno):
-    cursor.execute('DELETE FROM usuarios WHERE id_aluno=%s', (id_aluno,))
+# EXCLUIR USUÁRIO
+@app.route('/excluir_usuario/<int:id>', methods=['DELETE'])
+def excluir_usuario(id):
+    cursor.execute('DELETE FROM usuarios WHERE id=%s', (id,))
     conn.commit()
 
     if cursor.rowcount == 0:
@@ -81,81 +88,98 @@ def excluir_usuario(id_aluno):
 
     return jsonify({'message': 'Usuário excluído com sucesso.'})
 
+# Listar todos os usuários
 @app.route('/usuarios', methods=['GET'])
 def listar_usuarios():
-    cursor.execute('SELECT id_aluno, nome, email FROM usuarios')
+    cursor.execute('SELECT id, nome, email FROM usuarios')
     usuarios = cursor.fetchall()
     return jsonify(usuarios)
 
 
+#REVISÃO 3 (resumo)  
 @app.route('/resumo', methods=['POST'])
 def resumo():
+     # Recupera o corpo da requisição POST que deve conter o input 
     data = request.get_json()
 
     if not data or 'tema' not in data:
-        return jsonify({'error': 'O campo "tema" é obrigatório.'}), 400
+        return jsonify({'error': 'O campo"tema" é obrigatório.'}), 400
 
     tema = data['tema']
+
+
     prompt = f"Faça um resumo de tudo que aconteceu durante a(o) '{tema}'"
 
     try:
-        model = genai.GenerativeModel('gemini-2.0-flash')
+        model = genai.GenerativeModel('gemini-2.0-flash')  
         response = model.generate_content(prompt)
         texto = response.text.strip()
         return jsonify({"assunto": tema, "contedo": texto})
     except Exception as e:
         return jsonify({"erro": str(e)}), 500
 
+
+#REVISÃO 4 (correção)
 @app.route('/correcao', methods=['POST'])
 def correcao():
+
+    # Recupera o corpo da requisição POST que deve conter o input 
     data = request.get_json()
 
-    if not data or 'tema' not in data or 'texto' not in data:
-        return jsonify({'error': 'Os campos "tema" e "texto" são obrigatórios.'}), 400
+    if not data or 'tema' not in data or texto not in data:
+        return jsonify({'error': 'O campo"texto" e "tema" são obrigatórios.'}), 400
 
     tema = data['tema']
     texto = data['texto']
 
-    prompt = f"Você é um professor e precisa corrigir o texto que seu aluno mandou sobre o tema '{tema}'. Esse é o texto do aluno: '{texto}'"
+    prompt = f"Você é um professor e precisa corrigir o texto que seu aluno mandou sobre o tema '{tema}'. esse é o texto do aluno: '{texto}'"
 
     try:
-        model = genai.GenerativeModel('gemini-2.0-flash')
+        model = genai.GenerativeModel('gemini-2.0-flash')  
         response = model.generate_content(prompt)
-        texto_corrigido = response.text.strip()
-        return jsonify({"texto": texto, "contedo": texto_corrigido})
+        texto = response.text.strip()
+        return jsonify({"texto": texto, "contedo": texto})
     except Exception as e:
         return jsonify({"erro": str(e)}), 500
 
+
+#REVISÃO 5 (flashcard)
 @app.route('/flashcard', methods=['POST'])
-def flashcard():
+def fashcard():
+# Recupera o corpo da requisição POST que deve conter o input 
     data = request.get_json()
 
     if not data or 'tema' not in data:
-        return jsonify({'error': 'O campo "tema" é obrigatório.'}), 400
+        return jsonify({'error': 'O campo"tema" é obrigatório.'}), 400
 
     tema = data['tema']
-    prompt = f"Gere 12 perguntas para flashcards sobre o tema '{tema}'. Retorne a pergunta e a resposta correta, a resposta deve ser breve e acertiva. Estrutura: Pergunta: [pergunta] Resposta: [resposta]"
+
+    prompt = f"Gere 12 perguntas para flashcards sobre o tema '{tema}'. retone a pergunta e a resposta correta com uma breve explicação resumida. essa dever ser a estrutura: Pergunta: [pergunta] Resposta: [resposta] Explicação: [explicação]"
 
     try:
-        model = genai.GenerativeModel('gemini-2.0-flash')
+        model = genai.GenerativeModel('gemini-2.0-flash')  
         response = model.generate_content(prompt)
         texto = response.text.strip()
         return jsonify({"assunto": tema, "contedo": texto})
     except Exception as e:
         return jsonify({"erro": str(e)}), 500
 
+
+#REVISÃO 6 (quiz)
 @app.route('/quiz', methods=['POST'])
 def quiz():
+    # Recupera o corpo da requisição POST que deve conter o input 
     data = request.get_json()
 
     if not data or 'tema' not in data:
-        return jsonify({'error': 'O campo "tema" é obrigatório.'}), 400
+        return jsonify({'error': 'O campo"tema" é obrigatório.'}), 400
 
     tema = data['tema']
-    prompt = f"Gere uma prova com 10 questões sobre o tema '{tema}'. Retorne a pergunta com 4 alternativas e qual é a resposta correta."
+
+    prompt = f"Gere uma prova com 10 questões sobre o tema '{tema}'. retone a pergunta com 4 alternativas e qual é a resposta correta"
 
     try:
-        model = genai.GenerativeModel('gemini-2.0-flash')
+        model = genai.GenerativeModel('gemini-2.0-flash')  
         response = model.generate_content(prompt)
         texto = response.text.strip()
         return jsonify({"assunto": tema, "contedo": texto})
@@ -163,4 +187,5 @@ def quiz():
         return jsonify({"erro": str(e)}), 500
 
 if __name__ == '__main__':
+    app.run(debug=True)
     app.run(debug=True, host='0.0.0.0', port=5000)

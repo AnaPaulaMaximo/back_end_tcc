@@ -1,17 +1,21 @@
-# import mysql.connector
 
-# ambiente = 'desenvolvimento'
+#****CASA****
+import pymysql
 
-# if ambiente == 'desenvolvimento':
-#     DB_HOST = 'localhost'
-#     DB_USER = 'root'
-#     DB_PASSWORD = 'senai'
-#     DB_NAME = 'teste_usuarios'
+ambiente = 'desenvolvimento'
 
-# conn = mysql.connector.connect(
-#     host=DB_HOST,
-#     user=DB_USER,
-#     password=DB_PASSWORD,
-#     database=DB_NAME
-# )
-# cursor = conn.cursor(dictionary=True)
+if ambiente == 'desenvolvimento':
+    DB_HOST = 'localhost'
+    DB_USER = 'root'
+    DB_PASSWORD = 'maximo241207'
+    DB_NAME = 'tcc'
+
+conn = pymysql.connect(
+    host=DB_HOST,
+    user=DB_USER,
+    password=DB_PASSWORD,
+    database=DB_NAME,
+    cursorclass=pymysql.cursors.DictCursor
+)
+
+cursor = conn.cursor()

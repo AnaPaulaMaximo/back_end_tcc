@@ -87,6 +87,42 @@ def listar_usuarios():
     usuarios = cursor.fetchall()
     return jsonify(usuarios)
 
+@app.route('/mapa_conceitual', methods=['POST'])
+def mapa_conceitual():
+    data = request.get_json()
+
+    if not data or 'tema' not in data:
+        return jsonify({'error': 'O campo "tema" é obrigatório.'}), 400
+
+    tema = data['tema']
+    prompt = f"""Gere um mapa conceitual com 4 seções distintas sobre o tema '{tema}'.
+Cada seção deve ter um subtítulo conciso e em negrito, seguido por um parágrafo detalhado sobre esse subtítulo.
+Formato de saída esperado para cada seção:
+**[Subtítulo da Seção]**
+[Parágrafo detalhado sobre o subtítulo.]
+
+Certifique-se de que cada seção seja clara e independente.
+Exemplo:
+**Introdução à IA**
+A Inteligência Artificial (IA) é um campo da ciência da computação dedicado a resolver problemas cognitivos comumente associados à inteligência humana...
+
+**Aprendizado de Máquina**
+O Aprendizado de Máquina (Machine Learning - ML) é um subcampo da IA focado no desenvolvimento de sistemas que podem aprender...
+
+**Redes Neurais**
+Redes Neurais Artificiais (RNAs) são modelos computacionais inspirados no funcionamento do cérebro biológico...
+
+**Aplicações da IA**
+A IA tem uma vasta gama de aplicações, desde assistentes virtuais e carros autônomos até diagnósticos médicos e análise de dados...
+"""
+
+    try:
+        model = genai.GenerativeModel('gemini-2.0-flash')
+        response = model.generate_content(prompt)
+        texto = response.text.strip()
+        return jsonify({"assunto": tema, "contedo": texto})
+    except Exception as e:
+        return jsonify({"erro": str(e)}), 500
 
 @app.route('/resumo', methods=['POST'])
 def resumo():
