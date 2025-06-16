@@ -59,11 +59,12 @@ def editar_usuario(id_aluno):
     nome = data.get('nome')
     email = data.get('email')
     senha = data.get('senha')
+    url_foto = data.get('url_foto')
 
-    if not nome or not email or not senha:
+    if not nome or not email or not senha or not url_foto:
         return jsonify({'error': 'Todos os campos são obrigatórios.'}), 400
 
-    cursor.execute('UPDATE usuarios SET nome=%s, email=%s, senha=%s WHERE id_aluno=%s', (nome, email, senha, id_aluno))
+    cursor.execute('UPDATE usuarios SET nome=%s, email=%s, senha=%s url_foto WHERE id_aluno=%s', (nome, email, senha, url_foto, id_aluno))
     conn.commit()
 
     if cursor.rowcount == 0:
@@ -83,10 +84,9 @@ def excluir_usuario(id_aluno):
 
 @app.route('/usuarios', methods=['GET'])
 def listar_usuarios():
-    cursor.execute('SELECT id_aluno, nome, email FROM usuarios')
+    cursor.execute('SELECT id_aluno, nome, email, url_foto FROM usuarios')
     usuarios = cursor.fetchall()
     return jsonify(usuarios)
-
 
 @app.route('/resumo', methods=['POST'])
 def resumo():
@@ -94,9 +94,15 @@ def resumo():
 
     if not data or 'tema' not in data:
         return jsonify({'error': 'O campo "tema" é obrigatório.'}), 400
-
     tema = data['tema']
-    prompt = f"Faça um resumo de tudo que aconteceu durante a(o) '{tema}'"
+    prompt = f"""
+Dado o tema '{tema}', primeiro avalie se ele é estritamente relacionado a filosofia ou sociologia e se não contém conteúdo preconceituoso, sexual, violento ou inadequado de qualquer tipo.
+
+O resumo deve ser focado nos principais tópicos do tema '{tema}'.
+
+Se o tema for inválido (não relacionado a filosofia/sociologia ou contendo termos inadequados), retorne **APENAS** um JSON com a seguinte estrutura e mensagem de erro específica, sem texto adicional:
+{{"error_message": "Por favor, escolha um tema relacionado a filosofia ou sociologia, e que não seja preconceituoso, sexual ou inadequado."}}
+"""
 
     try:
         model = genai.GenerativeModel('gemini-2.0-flash')
@@ -116,7 +122,13 @@ def correcao():
     tema = data['tema']
     texto = data['texto']
 
-    prompt = f"Você é um professor e precisa corrigir o texto que seu aluno mandou sobre o tema '{tema}'. Esse é o texto do aluno: '{texto}'"
+    
+    prompt = f""""Você é um professor especializado em Filosofia e Sociologia. precisa corrigir o texto que seu aluno mandou sobre o tema '{tema}'. esse é o texto do aluno: '{texto}'.você terá que ver se oque eles escreveram está certo e dar um feedback de forma resumida, não foque na ortografia ou gramática e sim no conteúdo
+ Dado o tema '{tema}', primeiro avalie se ele é estritamente relacionado a filosofia ou sociologia e se não contém conteúdo preconceituoso, sexual, violento ou inadequado de qualquer tipo.
+
+Se o tema for inválido (não relacionado a filosofia/sociologia ou contendo termos inadequados), retorne **APENAS** um JSON com a seguinte estrutura e mensagem de erro específica, sem texto adicional:
+{{"error_message": "Por favor, escolha um tema relacionado a filosofia ou sociologia, e que não seja preconceituoso, sexual ou inadequado."}}
+"""
 
     try:
         model = genai.GenerativeModel('gemini-2.0-flash')
@@ -134,7 +146,14 @@ def flashcard():
         return jsonify({'error': 'O campo "tema" é obrigatório.'}), 400
 
     tema = data['tema']
-    prompt = f"Gere 12 perguntas para flashcards sobre o tema '{tema}'. Retorne a pergunta e a resposta correta, a resposta deve ser breve e acertiva. Estrutura: Pergunta: [pergunta] Resposta: [resposta]"
+    prompt = f"""
+Dado o tema '{tema}', primeiro avalie se ele é estritamente relacionado a filosofia ou sociologia e se não contém conteúdo preconceituoso, sexual, violento ou inadequado de qualquer tipo.
+
+Se o tema for válido, Gere 12 perguntas para flashcards sobre o tema '{tema}'. Retorne a pergunta e a resposta correta, a resposta deve ser breve e acertiva. Estrutura: Pergunta: [pergunta] Resposta: [resposta]
+
+Se o tema for inválido (não relacionado a filosofia/sociologia ou contendo termos inadequados), retorne **APENAS** um JSON com a seguinte estrutura e mensagem de erro específica, sem texto adicional:
+{{"error_message": "Por favor, escolha um tema relacionado a filosofia ou sociologia, e que não seja preconceituoso, sexual ou inadequado."}}
+"""
 
     try:
         model = genai.GenerativeModel('gemini-2.0-flash')
@@ -152,7 +171,31 @@ def quiz():
         return jsonify({'error': 'O campo "tema" é obrigatório.'}), 400
 
     tema = data['tema']
-    prompt = f"Gere uma prova com 10 questões sobre o tema '{tema}'. Retorne a pergunta com 4 alternativas e qual é a resposta correta."
+    
+    prompt = f"""Dado o tema '{tema}', primeiro avalie se ele é estritamente relacionado a filosofia ou sociologia e se não contém conteúdo preconceituoso, sexual, violento ou inadequado de qualquer tipo.
+
+Se o tema for válido, gere um quiz com 10 questões sobre ele. Retorne as questões **APENAS** em formato JSON, sem qualquer texto adicional, formatação Markdown de blocos de código ou outros caracteres fora do JSON. Cada questão deve ser um objeto com as seguintes chaves:
+- "pergunta": (string) O texto da pergunta.
+- "opcoes": (array de strings) Um array com 4 opções de resposta.
+- "resposta_correta": (string) A letra da opção correta (ex: "a", "b", "c", "d").
+
+Exemplo de formato JSON esperado para um quiz válido:
+[
+  {{
+    "pergunta": "Qual a capital do Brasil?",
+    "opcoes": ["Rio de Janeiro", "São Paulo", "Brasília", "Salvador"],
+    "resposta_correta": "c"
+  }},
+  {{
+    "pergunta": "Quem descobriu o Brasil?",
+    "opcoes": ["Cristóvão Colombo", "Pedro Álvares Cabral", "Vasco da Gama", "Fernão de Magalhães"],
+    "resposta_correta": "b"
+  }}
+]
+
+Se o tema for inválido (não relacionado a filosofia/sociologia ou contendo termos inadequados), retorne **APENAS** um JSON com a seguinte estrutura e mensagem de erro específica, sem texto adicional:
+{{"error_message": "Por favor, escolha um tema relacionado a filosofia ou sociologia, e que não seja preconceituoso, sexual ou inadequado."}}
+"""
 
     try:
         model = genai.GenerativeModel('gemini-2.0-flash')
